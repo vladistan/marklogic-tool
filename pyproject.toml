@@ -1,0 +1,143 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "marklogic-tool"
+version = "0.0.1"
+description = "Read-only CLI for querying MarkLogic Server via REST API"
+readme = "README.md"
+license = "MIT"
+authors = [
+  {name = "Vlad Korolev", email = "vlad@v-lad.org"}
+]
+requires-python = ">=3.13"
+keywords = [
+  "marklogic",
+  "rest-api",
+  "cli",
+  "database",
+  "xquery"
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.13",
+  "Operating System :: OS Independent",
+  "Topic :: Database",
+  "Environment :: Console"
+]
+dependencies = [
+  "typer>=0.12",
+  "httpx",
+  "pydantic>=2.0",
+  "rich>=13.0",
+  "structlog>=24.0",
+  "sentry-sdk>=2.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=4.0",
+  "ruff>=0.8",
+  "mypy>=1.13"
+]
+
+[project.urls]
+Homepage = "https://github.com/vladistan/marklogic-tool"
+Repository = "https://github.com/vladistan/marklogic-tool"
+Issues = "https://github.com/vladistan/marklogic-tool/issues"
+
+[project.scripts]
+marklogic-tool = "marklogic_tool.cli:main"
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "if self.debug:",
+  "if settings.DEBUG",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if 0:",
+  "if __name__ == .__main__.:",
+  "class .*\\bProtocol\\):",
+  "@(abc\\.)?abstractmethod"
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+  "*/tests/*",
+  "*/test_*.py",
+  "*/__about__.py"
+]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_unreachable = true
+strict_equality = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = [
+  "--strict-markers",
+  "--strict-config",
+  "-m",
+  "not integration",
+  "--cov=marklogic_tool",
+  "--cov-report=term-missing",
+  "--cov-report=xml",
+  "--cov-fail-under=80"
+]
+markers = [
+  "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+  "integration: marks tests as integration tests",
+  "unit: marks tests as unit tests"
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+  "E",
+  "W",
+  "F",
+  "I",
+  "B",
+  "C4",
+  "UP",
+  "ARG",
+  "SIM",
+  "TCH"
+]
+ignore = [
+  "E501",
+  "B008",
+  "ARG001",
+  "ARG002"
+]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["marklogic_tool"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/**/*.py" = ["ARG", "S101"]

@@ -1,0 +1,32 @@
+# marklogic-tool configuration
+# Copy to ~/.config/marklogic-tool/config.toml
+#
+# Environment variable overrides:
+# MARKLOGIC_CONFIG  — path to config file (overrides default location)
+# ML_PROFILE        — profile name (overrides default_profile)
+# ML_HOST           — override host
+# ML_PORT           — override port
+# ML_USERNAME       — override username
+# ML_PASSWORD       — override password
+
+default_profile = "local"
+
+[profiles.local]
+host = "localhost"
+port = 8000
+manage_port = 8002
+username = "admin"
+password = "admin" # pragma: allowlist secret
+auth_method = "digest"
+timeout = 30
+default_group = "Default"
+
+# [profiles.staging]
+# host = "ml-staging.example.com"
+# port = 8000
+# manage_port = 8002
+# username = "reader"
+# password = "change-me"  # pragma: allowlist secret
+# auth_method = "digest"
+# timeout = 60
+# default_group = "Default"

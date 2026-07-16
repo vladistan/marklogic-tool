@@ -1,0 +1,21 @@
+default_profile = "dev"
+
+[profiles.dev]
+host = "ml-dev.example.com"
+port = 8000
+manage_port = 8002
+username = "admin"
+password = "dev-secret" # pragma: allowlist secret
+auth_method = "digest"
+timeout = 30
+default_group = "Default"
+
+[profiles.staging]
+host = "ml-staging.example.com"
+port = 8100
+manage_port = 8003
+username = "reader"
+password = "staging-secret" # pragma: allowlist secret
+auth_method = "basic"
+timeout = 60
+default_group = "Staging"
