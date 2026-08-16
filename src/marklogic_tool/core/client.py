@@ -3,41 +3,40 @@
 from typing import Any
 
 import httpx
-import structlog
 
+from marklogic_tool.core import http
 from marklogic_tool.core.config import ProfileSettings
-from marklogic_tool.core.exceptions import (
-    AuthenticationError,
-    NetworkError,
-    NotFoundError,
-    ServerError,
-    TimeoutError,
-)
-
-log = structlog.get_logger()
+from marklogic_tool.core.exceptions import NetworkError, TimeoutError
+from marklogic_tool.core.identity import Credential, resolve_identity
 
 
 class MarkLogicClient:
     """Synchronous HTTP client for MarkLogic Server REST API."""
 
-    def __init__(self, profile: ProfileSettings) -> None:
+    def __init__(
+        self,
+        profile: ProfileSettings,
+        *,
+        credential: Credential | None = None,
+        port: int | None = None,
+        timeout: int | None = None,
+        transport: httpx.BaseTransport | None = None,
+    ) -> None:
         self._profile = profile
-        self._base_url = f"http://{profile.host}:{profile.port}"
-        self._auth = self._build_auth(profile)
+        self._port = port if port is not None else profile.port
+        self._timeout = timeout if timeout is not None else profile.timeout
+        self._credential = credential or resolve_identity(profile)
+        self._base_url = f"http://{profile.host}:{self._port}"
+        self._auth = http.build_auth(self._credential, profile.auth_method)
+        self._transport = transport
         self._client: httpx.Client | None = None
-
-    def _build_auth(self, profile: ProfileSettings) -> httpx.Auth:
-        username = profile.username
-        password = profile.password.get_secret_value()
-        if profile.auth_method == "digest":
-            return httpx.DigestAuth(username, password)
-        return httpx.BasicAuth(username, password)
 
     def __enter__(self) -> "MarkLogicClient":
         self._client = httpx.Client(
             base_url=self._base_url,
             auth=self._auth,
-            timeout=self._profile.timeout,
+            timeout=self._timeout,
+            transport=self._transport,
         )
         return self
 
@@ -50,6 +49,14 @@ class MarkLogicClient:
     def base_url(self) -> str:
         return self._base_url
 
+    @property
+    def credential(self) -> Credential:
+        return self._credential
+
+    @property
+    def timeout(self) -> int:
+        return self._timeout
+
     def request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
         """Execute an HTTP request with error translation."""
         if self._client is None:
@@ -60,36 +67,30 @@ class MarkLogicClient:
             response = self._client.request(method, path, **kwargs)
         except httpx.ConnectError as e:
             raise NetworkError(
-                f"Cannot connect to {self._profile.host}:{self._profile.port}. "
+                f"Cannot connect to {self._profile.host}:{self._port}. "
                 f"Check that MarkLogic is running and the host/port are correct."
             ) from e
         except httpx.TimeoutException as e:
             raise TimeoutError(
-                f"Request timed out after {self._profile.timeout}s "
-                f"to {self._profile.host}:{self._profile.port}"
+                http.client_deadline_message(
+                    self._profile.host, self._port, self._timeout
+                )
             ) from e
 
-        self._check_response(response)
+        http.check_response(response, self._context(method, path))
         return response
 
-    def _check_response(self, response: httpx.Response) -> None:
-        """Translate HTTP error status codes to domain exceptions."""
-        if response.is_success:
-            return
+    def probe(self, path: str, **kwargs: Any) -> http.Absent | http.Present:
+        """Read where absence is a legitimate answer."""
+        if self._client is None:
+            msg = "Client not initialized. Use as context manager."
+            raise RuntimeError(msg)
+        return http.probe(
+            self._client, path, context=self._context("GET", path), **kwargs
+        )
 
-        status = response.status_code
-        if status in (401, 403):
-            action = "permission denied" if status == 403 else "authentication failed"
-            raise AuthenticationError(
-                f"HTTP {status}: {action} at {self._profile.host}:{self._profile.port}"
-            )
-        if status == 404:
-            raise NotFoundError(f"Resource not found: {response.request.url.path}")
-        if status >= 500:
-            raise ServerError(
-                f"MarkLogic server error (HTTP {status}) "
-                f"at {self._profile.host}:{self._profile.port}"
-            )
+    def _context(self, method: str, path: str) -> str:
+        return f"{method} {path} on {self._profile.host}:{self._port}"
 
     def get(self, path: str, **kwargs: Any) -> httpx.Response:
         """Execute a GET request."""

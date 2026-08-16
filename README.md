@@ -1,12 +1,6 @@
 # marklogic-tool
 
-A read-only command-line tool for querying MarkLogic Server over its REST API.
-Invoked as `marklogic-tool`, it is built for exploring databases, servers, and
-hosts, retrieving documents, running ad-hoc XQuery/JavaScript, and debugging
-deployments — without touching a full deployment toolchain.
-
-marklogic-tool is intended for **exploration, debugging, and lightweight
-administration**. It is not a data-loading, deployment, or CI/CD tool.
+CLI to query, verify, deploy and destroy MarkLogic Server configuration via the REST and Management APIs.
 
 ## Installation
 
@@ -14,152 +8,224 @@ administration**. It is not a data-loading, deployment, or CI/CD tool.
 pip install marklogic-tool
 ```
 
-This installs the `marklogic-tool` console script. Python 3.13+ is required.
-
-## Quick Start
-
-```bash
-marklogic-tool db list                          # list all databases
-marklogic-tool server list                      # list all app servers
-marklogic-tool host list                        # list cluster hosts
-marklogic-tool doc get /path/doc.xml            # retrieve a document
-marklogic-tool search -d my-database "term"     # search documents in a database
-marklogic-tool eval "xdmp:hosts()"              # run an XQuery expression
-marklogic-tool eval -j "xdmp.hosts()"           # run a JavaScript expression
-marklogic-tool config list                      # show available connection profiles
-```
-
-### Argument ordering
-
-For `search` and `eval`, **options must come before the positional argument**
-(the query or code). Options placed after the positional argument are
-interpreted as subcommands and will fail:
-
-```bash
-marklogic-tool search -d MyDB -n 5 "term"       # correct
-marklogic-tool eval -d MyDB "xdmp:hosts()"      # correct
-
-marklogic-tool search "term" -n 5               # wrong — '-n' is read as a command
-```
+The tool needs Python 3.13 or later.
 
 ## Commands
 
-### Discovery
+| Command | Function |
+|---|---|
+| `status` | Reports server reachability, version and health |
+| `count` | Counts documents, and reports the identity that counted them |
+| `count-unpermissioned` | Counts documents that have an empty permission set |
+| `search` | Searches documents |
+| `doc` | Reads and writes documents |
+| `eval` | Runs code on the server |
+| `db` | Operates on databases |
+| `server` | Operates on app servers |
+| `group` | Operates on cluster groups |
+| `host` | Operates on cluster hosts |
+| `config` | Manages the tool configuration |
+| `deploy FILE` | Applies a configuration declaration |
+| `destroy FILE` | Removes the objects in a declaration |
+| `test` | Runs diagnostic commands |
+
+Two options apply to all commands:
+
+- `--output` (`-o`) selects `json`, `table` or `raw`.
+- `--profile` (`-P`) selects a configuration profile.
+
+## Exit codes
+
+The exit code is a contract. An agent can branch on it. The error message text is
+not a contract. Match on the exit code, and never on the wording.
+
+| Code | Name | Meaning |
+|---|---|---|
+| 0 | `SUCCESS` | The operation is complete |
+| 1 | `GENERAL` | An undocumented failure. No documented result gives this code |
+| 2 | `USAGE` | The command invocation is wrong |
+| 3 | `INPUT` | The configuration, the authentication or the request is wrong |
+| 4 | `OUTPUT` | The tool cannot parse the response |
+| 5 | `NETWORK` | The server is unreachable, or it returned a 5xx status |
+| 6 | `TIMEOUT` | The deadline elapsed, or the server returned `XDMP-EXTIME` |
+| 7 | `VERIFICATION_FAILED` | A verification ran correctly and found offending documents |
+| 8 | `BLOCKED` | The tool cannot change an object safely, and left it unchanged |
+
+Codes 7 and 8 report a result. Codes 1 to 6 report a failure of the tool. Do not
+retry code 7 or code 8.
+
+Code 1 maps to no documented outcome. A caller that reads code 1 as "not found"
+reads the wrong code. A missing resource gives code 3.
+
+A refusal gives an error. The tool does not continue with less precision. It does
+not use the administrator credential in place of an identity that it cannot
+resolve. HTTP 400 and HTTP 409 raise, and both give code 3. Neither status
+returns success.
+
+### Per-command exit codes
+
+| Command | 0 | 2 | 3 | 6 | 7 |
+|---|---|---|---|---|---|
+| `status` | Healthy | — | The profile or the credential is wrong | Deadline or `XDMP-EXTIME` | Reachable, but unhealthy |
+| `count` | Counted | `--as-user-secret` without `--as-user` | `rest_port` is unset, or the identity is unresolvable | Deadline or `XDMP-EXTIME` | — |
+| `count-unpermissioned` | No offenders, or `--no-gate` | `--as-user` (refused here) | The URI lexicon is off | Deadline or `XDMP-EXTIME` | Offenders found |
+
+`count-unpermissioned` is a gate. By default, one offender gives exit code 7. Use
+`--no-gate` to report offenders with exit code 0.
+
+Code 4 applies when a response has no usable `total`. The tool refuses the
+response. It does not use 0 in place of the count, because an unpermissioned
+corpus also reports 0.
+
+## Verification output
+
+`count-unpermissioned --output json` gives the schema
+`marklogic-tool/unpermissioned/1`. Read the `schema` field to identify the
+payload.
+
+| Field | Content |
+|---|---|
+| `unpermissioned` | The number of documents that have an empty permission set |
+| `total_scanned` | The number of URIs examined |
+| `method` | `exhaustive` or `sampled` |
+| `evidence` | `true` for an exhaustive scan only |
+| `findings_are_sound` | `true`, because a sampled scan can only report too few offenders |
+| `uris` | The offending URIs in the output |
+| `uris_requested` | The number given to `--list-uris`, or `0` |
+| `uris_listing` | `not_requested`, `truncated` or `complete` |
+| `identity`, `identity_source`, `endpoint` | The identity that counted, and the endpoint it used |
+| `gate`, `exit_code` | The gate state, and the exit code of the process |
+
+`uris_listing` has three values:
+
+- `not_requested` — the command did not include `--list-uris`. The `uris` field is
+  empty because the command asked for no URIs.
+- `truncated` — there are more offenders than the requested number. The
+  `unpermissioned` field gives the correct total.
+- `complete` — the `uris` field contains all the offenders.
+
+## Acceptance procedure
+
+Use both steps. One step alone is not sufficient.
 
 ```bash
-marklogic-tool db list                          # list databases
-marklogic-tool db show <name>                   # forests, indices, settings
-marklogic-tool server list                      # list app servers
-marklogic-tool server show <name>               # port, root, modules, auth type
-marklogic-tool host list                        # list hosts
-marklogic-tool host show [<name>]               # host details
-marklogic-tool group list                       # list groups
-marklogic-tool group show <name>                # group details
+# 1. Count as the administrator and as the application identity.
+#    Both counts must use the same endpoint.
+marklogic-tool -o json count -d example-content
+marklogic-tool -o json count -d example-content --as-user writer
+
+# 2. Show that each document is visible to a non-administrator identity.
+marklogic-tool count-unpermissioned -d example-content; echo "exit=$?"
 ```
 
-### Documents
+The procedure passes when these three conditions are true:
 
-```bash
-marklogic-tool doc get <uri> [-d database] [-f xml|json|text|binary] [--metadata]
-marklogic-tool search [-d database] [-c collection] [-n pageLength] <query>
-```
+- The two counts are equal.
+- The `endpoint` field is identical in both counts.
+- `count-unpermissioned` reports 0 and gives exit code 0.
 
-Always pass `-d <database>` to `search` — the default database is typically
-empty.
+The administrator sees all documents. Therefore a count as the administrator
+cannot show this defect. Two different app servers can address different content
+databases. Therefore both counts must use the same endpoint. When `rest_port` is
+set, `count` uses the REST instance for both counts.
 
-### Code execution
+A sampled scan (`--sampled N`) is not evidence. A sampled scan can only report
+too few offenders. The offenders that it reports are correct, but a result of 0
+shows nothing.
 
-```bash
-marklogic-tool eval "<code>"                    # XQuery (default)
-marklogic-tool eval -j "<code>"                 # JavaScript
-marklogic-tool eval -f script.xqy              # read code from a file
-marklogic-tool eval -d my-database "<code>"    # target a specific database
-marklogic-tool eval --vars '{"x":1}' "<code>"  # pass external variables
-```
+## Credentials
 
-`eval` defaults to the App-Services database, so pass `-d <database>` when you
-need to run against a specific content database.
+Do not write a password in a declaration or in a profile. Write a reference. The
+tool resolves the reference when it needs the password. There are three schemes:
 
-## Configuration
+| Reference | Source |
+|---|---|
+| `env:VAR_NAME` | The environment variable `VAR_NAME` |
+| `ssm:/path/to/parameter` | AWS SSM Parameter Store, with decryption |
+| `profile:NAME` | Another identity in the same profile |
 
-Connection settings are resolved from **layered sources**, in order of
-increasing precedence:
+The set is closed. The tool refuses any other value where it needs a reference.
 
-1. **TOML config profiles** — the base layer
-2. **Environment variables** — override individual profile values
-3. **CLI flags** — override per invocation (highest precedence)
+References occur in two places:
 
-### Config file and profiles
-
-Profiles live in a TOML file at `~/.config/marklogic-tool/config.toml`. Copy the
-bundled `config.example.toml` to that location and edit it:
+- `users[].password` in a declaration that you give to `deploy`.
+- `[profiles.<name>.identities]` in your configuration. `--as-user` resolves
+  against this map.
 
 ```toml
-default_profile = "local"
-
-[profiles.local]
-host = "localhost"
-port = 8000
-manage_port = 8002
-username = "admin"
-password = "admin"
-auth_method = "digest"
-timeout = 30
-default_group = "Default"
-
-# [profiles.staging]
-# host = "ml-staging.example.com"
-# port = 8000
-# username = "reader"
-# password = "change-me"
-# auth_method = "digest"
+[profiles.<profile-name>.identities]
+<app-writer-username> = "env:<ENV_VAR_NAME>"
+<app-reader-username> = "ssm:/<org>/<env>/marklogic/<instance>/<identity>-password"
 ```
 
-Select a profile per command with `-P` / `--profile` (accepted at any position):
+### AWS permissions
 
-```bash
-marklogic-tool -P staging db list
-marklogic-tool config list                      # list all configured profiles
-marklogic-tool config show                      # show the active profile's details
+An SSM parameter that holds a password is a SecureString. The tool requests it
+with decryption. Therefore the identity that runs the tool needs two permissions:
+
+- `ssm:GetParameter` reads the parameter.
+- `kms:Decrypt` decrypts it, on the KMS key of the parameter.
+
+If `kms:Decrypt` is absent, `GetParameter` is successful and the decryption
+fails. The error looks like a wrong parameter path. If the path is correct and
+the resolution fails, examine the KMS permission.
+
+Give the permission for a path prefix. Do not use `*`.
+
+```
+arn:aws:ssm:<region>:<account-id>:parameter/<org>/<env>/marklogic/*
 ```
 
-### Environment variables
+The tool reads only the parameters that the declaration and the profile name. It
+does not search the store. Therefore a prefix is sufficient.
 
-| Variable           | Overrides                                             |
-|--------------------|-------------------------------------------------------|
-| `MARKLOGIC_CONFIG` | Path to the config file (overrides the default above) |
-| `ML_PROFILE`       | Profile name (overrides `default_profile`)            |
-| `ML_HOST`          | Host                                                  |
-| `ML_PORT`          | Port                                                  |
-| `ML_USERNAME`      | Username                                              |
-| `ML_PASSWORD`      | Password                                              |
+### The tool does not use a different credential
 
-## Global options
+If the tool cannot resolve a reference, the command fails. The error names the
+identity. The tool does not use the profile credential in place of it.
 
-| Flag              | Purpose                                                   |
-|-------------------|-----------------------------------------------------------|
-| `-P`, `--profile` | Select a connection profile                               |
-| `-o`, `--output`  | Output format: `json`, `table`, or `raw`                  |
-| `-v`, `--verbose` | Enable debug logging                                      |
-| `-q`, `--quiet`   | Suppress warning messages                                 |
-| `-V`, `--version` | Print the version and exit                                |
+This behavior is a security property. The administrator sees all documents.
+Therefore a check that continues as the administrator reports no offenders, and
+hides the defect.
 
-Output auto-detects when `-o` is omitted: `table` for an interactive terminal,
-`json` when piped.
+An empty reference is an error. `env:` with no variable name, and a variable that
+contains only spaces, both give an error. The tool does not use an empty
+password.
+
+### The tool does not print a credential
+
+A resolved password does not occur in the output, in the logs or in a trace. The
+module `core/secrets.py` is the only place that resolves a password. The tool
+registers each resolved value with one redaction function. The log processor and
+the crash-report filter both use that function. Therefore the tool removes the
+value from all fields.
+
+For an `ssm:` reference, the tool gives the parameter name as an argument. It
+does not use a shell. Therefore the value does not occur in a command line or in
+the shell history.
 
 ## Telemetry
 
-marklogic-tool sends anonymous error and performance data to a hosted Sentry
-project by default, which helps surface crashes and regressions. No document
-content or credentials are collected.
+The tool sends crash reports to a Sentry project. It also sends a sample of
+performance traces. The sample rate is 3 percent. The reports show crashes and
+performance changes.
 
-To opt out, set the `MARKLOGIC_TOOL_DISABLE_TELEMETRY` environment variable to a
-truthy value (`1`, `true`, or `yes`):
+Two mechanisms keep credentials out of the reports:
 
-```bash
-export MARKLOGIC_TOOL_DISABLE_TELEMETRY=1
-```
+- The tool does not collect the local variables of a stack frame
+  (`include_local_variables=False`). The frames that fail are transport frames.
+  The variables in those frames hold the credential and the outbound headers.
+- The tool passes each outbound string through the redaction function that the
+  logs use (`before_send`). This includes messages, breadcrumbs and context.
 
-## License
+The tool does not collect document content.
 
-MIT — see [LICENSE](LICENSE).
+A person reads the crash reports, and uses them to correct defects.
+
+To send nothing, set `MARKLOGIC_TOOL_DISABLE_TELEMETRY` to `1`, `true` or `yes`.
+The value is not case-sensitive. The tool then does not start a Sentry client.
+Any other value, and no value, keeps telemetry active.
+
+Unit tests cover the redaction function. No live event has contained a
+credential, therefore no live event has tested the function. A live test
+confirmed that the tool does not collect local variables.

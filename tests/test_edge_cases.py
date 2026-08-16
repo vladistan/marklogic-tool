@@ -17,31 +17,39 @@ runner = CliRunner()
 MOCK_EMPTY_MULTIPART = b""
 
 
-MOCK_EMPTY_SEARCH_RESPONSE = json.dumps({
-    "total": 0,
-    "start": 1,
-    "page-length": 10,
-    "results": [],
-})
+MOCK_EMPTY_SEARCH_RESPONSE = json.dumps(
+    {
+        "total": 0,
+        "start": 1,
+        "page-length": 10,
+        "results": [],
+    }
+)
 
-MOCK_UNICODE_SEARCH_RESPONSE = json.dumps({
-    "total": 1,
-    "start": 1,
-    "page-length": 10,
-    "results": [
-        {
-            "index": 1,
-            "uri": "/doc/données/rapport-été.xml",
-            "score": 8192,
-            "matches": [
-                {
-                    "path": "/content",
-                    "match-text": ["Üniversité de ", {"highlight": "données"}, " été"],
-                }
-            ],
-        }
-    ],
-})
+MOCK_UNICODE_SEARCH_RESPONSE = json.dumps(
+    {
+        "total": 1,
+        "start": 1,
+        "page-length": 10,
+        "results": [
+            {
+                "index": 1,
+                "uri": "/doc/données/rapport-été.xml",
+                "score": 8192,
+                "matches": [
+                    {
+                        "path": "/content",
+                        "match-text": [
+                            "Üniversité de ",
+                            {"highlight": "données"},
+                            " été",
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+)
 
 
 def _mock_client_context(mock_client_cls):
@@ -116,7 +124,7 @@ def test_database_not_found_error(mock_client_cls, mock_resolve):
 
     result = runner.invoke(app, ["search", "-d", "nonexistent_db", "test"])
 
-    assert result.exit_code == 1
+    assert result.exit_code == 3
     assert "not found" in result.output.lower()
 
 
@@ -161,4 +169,7 @@ def test_auth_failure_shows_host(mock_client_cls, mock_resolve):
     result = runner.invoke(app, ["search", "test"])
 
     assert result.exit_code == 3
-    assert "ml-dev.example.com" in result.output or "authentication" in result.output.lower()
+    assert (
+        "ml-dev.example.com" in result.output
+        or "authentication" in result.output.lower()
+    )

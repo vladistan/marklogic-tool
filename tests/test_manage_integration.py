@@ -33,7 +33,7 @@ def test_db_list():
 
     assert result.exit_code == 0
     output = _clean_output(result.stdout)
-    assert "taxtime-nextgen-content" in output or "Documents" in output
+    assert "example-content" in output or "Documents" in output
 
 
 @pytest.mark.integration
@@ -51,11 +51,11 @@ def test_db_list_json():
 @pytest.mark.integration
 def test_db_show():
     _skip_if_no_config()
-    result = runner.invoke(app, ["db", "show", "taxtime-nextgen-content"])
+    result = runner.invoke(app, ["db", "show", "example-content"])
 
     assert result.exit_code == 0
     output = _clean_output(result.stdout)
-    assert "taxtime-nextgen-content" in output
+    assert "example-content" in output
 
 
 @pytest.mark.integration
@@ -65,13 +65,13 @@ def test_server_list():
 
     assert result.exit_code == 0
     output = _clean_output(result.stdout)
-    assert "App-Services" in output or "taxtime-nextgen" in output
+    assert "App-Services" in output or "example-app" in output
 
 
 @pytest.mark.integration
 def test_server_show():
     _skip_if_no_config()
-    result = runner.invoke(app, ["server", "show", "taxtime-nextgen"])
+    result = runner.invoke(app, ["server", "show", "example-app"])
 
     assert result.exit_code == 0
     output = _clean_output(result.stdout)

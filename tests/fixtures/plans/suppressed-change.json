@@ -1,0 +1,43 @@
+{
+  "schema": "marklogic-tool/deploy-plan/1",
+  "mode": "plan",
+  "target": [
+    "ml-01.example.test"
+  ],
+  "ml_version": null,
+  "objects": [
+    {
+      "kind": "app_server",
+      "name": "app",
+      "status": "unchanged",
+      "applied": false,
+      "changes": [],
+      "suppressed_changes": [
+        {
+          "property": "log-errors",
+          "observed": true,
+          "desired": false,
+          "redacted": false
+        }
+      ],
+      "blocked_reason": null,
+      "force_required": false,
+      "forced": false,
+      "depends_on_pending": [],
+      "notes": [
+        "1 change suppressed by ignore_properties"
+      ]
+    }
+  ],
+  "summary": {
+    "create": 0,
+    "update": 0,
+    "unchanged": 1,
+    "blocked": 0,
+    "total": 1
+  },
+  "warnings": [
+    "app server 'app': 1 change suppressed by ignore_properties"
+  ],
+  "exit_code": null
+}

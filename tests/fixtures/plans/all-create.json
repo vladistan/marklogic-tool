@@ -1,0 +1,61 @@
+{
+  "schema": "marklogic-tool/deploy-plan/1",
+  "mode": "plan",
+  "target": [
+    "ml-01.example.test"
+  ],
+  "ml_version": null,
+  "objects": [
+    {
+      "kind": "database",
+      "name": "content",
+      "status": "create",
+      "applied": false,
+      "changes": [
+        {
+          "property": "database-name",
+          "observed": null,
+          "desired": "content",
+          "redacted": false
+        }
+      ],
+      "suppressed_changes": [],
+      "blocked_reason": null,
+      "force_required": false,
+      "forced": false,
+      "depends_on_pending": [],
+      "notes": []
+    },
+    {
+      "kind": "app_server",
+      "name": "app",
+      "status": "create",
+      "applied": false,
+      "changes": [
+        {
+          "property": "port",
+          "observed": null,
+          "desired": 8040,
+          "redacted": false
+        }
+      ],
+      "suppressed_changes": [],
+      "blocked_reason": null,
+      "force_required": false,
+      "forced": false,
+      "depends_on_pending": [
+        "content"
+      ],
+      "notes": []
+    }
+  ],
+  "summary": {
+    "create": 2,
+    "update": 0,
+    "unchanged": 0,
+    "blocked": 0,
+    "total": 2
+  },
+  "warnings": [],
+  "exit_code": null
+}

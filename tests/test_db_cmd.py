@@ -129,6 +129,10 @@ def test_db_list_json(mock_resolve, mock_ml_cls, mock_manage_cls):
     assert len(data) == 2
 
 
+@patch(
+    "marklogic_tool.commands.db.collection_lexicon_enabled",
+    new=lambda *args, **kwargs: True,
+)
 @patch("marklogic_tool.commands.db._fetch_collections")
 @patch("marklogic_tool.commands.db._fetch_single_db_doc_count")
 @patch("marklogic_tool.commands.db._fetch_database_status")
@@ -154,6 +158,10 @@ def test_db_show(mock_resolve, mock_status, mock_count, mock_colls):
     assert "available" in result.stdout
 
 
+@patch(
+    "marklogic_tool.commands.db.collection_lexicon_enabled",
+    new=lambda *args, **kwargs: True,
+)
 @patch("marklogic_tool.commands.db._fetch_collections")
 @patch("marklogic_tool.commands.db._fetch_single_db_doc_count")
 @patch("marklogic_tool.commands.db._fetch_database_status")

@@ -34,7 +34,9 @@ def _make_profile():
 def test_network_error_suggests_checking_marklogic():
     profile = _make_profile()
     with (
-        patch.object(httpx.Client, "request", side_effect=httpx.ConnectError("refused")),
+        patch.object(
+            httpx.Client, "request", side_effect=httpx.ConnectError("refused")
+        ),
         pytest.raises(NetworkError, match="Check that MarkLogic is running"),
         MarkLogicClient(profile) as client,
     ):
@@ -44,7 +46,9 @@ def test_network_error_suggests_checking_marklogic():
 def test_timeout_error_includes_timeout_value():
     profile = _make_profile()
     with (
-        patch.object(httpx.Client, "request", side_effect=httpx.ReadTimeout("timed out")),
+        patch.object(
+            httpx.Client, "request", side_effect=httpx.ReadTimeout("timed out")
+        ),
         pytest.raises(TimeoutError, match="30s"),
         MarkLogicClient(profile) as client,
     ):
@@ -56,6 +60,7 @@ def test_auth_error_names_host():
     mock_resp = MagicMock()
     mock_resp.status_code = 401
     mock_resp.is_success = False
+    mock_resp.text = ""
     mock_resp.request = MagicMock()
     mock_resp.request.url = MagicMock()
     with (
@@ -69,7 +74,9 @@ def test_auth_error_names_host():
 def test_no_credentials_in_network_error():
     profile = _make_profile()
     with (
-        patch.object(httpx.Client, "request", side_effect=httpx.ConnectError("refused")),
+        patch.object(
+            httpx.Client, "request", side_effect=httpx.ConnectError("refused")
+        ),
         pytest.raises(NetworkError) as exc_info,
         MarkLogicClient(profile) as client,
     ):
@@ -81,7 +88,9 @@ def test_no_credentials_in_network_error():
 def test_no_credentials_in_timeout_error():
     profile = _make_profile()
     with (
-        patch.object(httpx.Client, "request", side_effect=httpx.ReadTimeout("timed out")),
+        patch.object(
+            httpx.Client, "request", side_effect=httpx.ReadTimeout("timed out")
+        ),
         pytest.raises(TimeoutError) as exc_info,
         MarkLogicClient(profile) as client,
     ):
@@ -94,6 +103,7 @@ def test_no_credentials_in_auth_error():
     mock_resp = MagicMock()
     mock_resp.status_code = 401
     mock_resp.is_success = False
+    mock_resp.text = ""
     mock_resp.request = MagicMock()
     mock_resp.request.url = MagicMock()
     with (
@@ -126,8 +136,8 @@ def test_exit_codes_match_exceptions():
     assert TimeoutError("test").exit_code == 6
     assert ConfigurationError("test").exit_code == 3
     assert AuthenticationError("test").exit_code == 3
-    assert NotFoundError("test").exit_code == 1
-    assert ServerError("test").exit_code == 1
+    assert NotFoundError("test").exit_code == 3
+    assert ServerError("test").exit_code == 5
 
 
 @patch("marklogic_tool.commands.search.resolve_profile")

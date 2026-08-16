@@ -44,17 +44,17 @@ def test_timeout_error_exit_code():
 
 def test_not_found_error_exit_code():
     err = NotFoundError("not found")
-    assert err.exit_code == ExitCode.GENERAL
+    assert err.exit_code == ExitCode.INPUT
 
 
 def test_server_error_exit_code():
     err = ServerError("500")
-    assert err.exit_code == ExitCode.GENERAL
+    assert err.exit_code == ExitCode.NETWORK
 
 
 def test_parse_error_exit_code():
     err = ParseError("bad response")
-    assert err.exit_code == ExitCode.GENERAL
+    assert err.exit_code == ExitCode.OUTPUT
 
 
 def test_exit_code_values():
@@ -65,3 +65,5 @@ def test_exit_code_values():
     assert ExitCode.OUTPUT == 4
     assert ExitCode.NETWORK == 5
     assert ExitCode.TIMEOUT == 6
+    assert ExitCode.VERIFICATION_FAILED == 7
+    assert ExitCode.BLOCKED == 8

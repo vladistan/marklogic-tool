@@ -1,4 +1,4 @@
-"""marklogic-tool: Read-only CLI for querying MarkLogic Server via REST API."""
+"""marklogic-tool: CLI to query, verify, deploy and destroy MarkLogic Server configuration via the REST and Management APIs."""
 
 from marklogic_tool.__about__ import __version__
 

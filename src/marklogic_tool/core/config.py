@@ -9,20 +9,27 @@ from typing import Any
 import structlog
 from pydantic import BaseModel, SecretStr
 
+from marklogic_tool.core import secrets
 from marklogic_tool.core.exceptions import ConfigurationError
 
 
 class ProfileSettings(BaseModel):
-    """Settings for a single MarkLogic server profile."""
+    """Settings for one MarkLogic server profile.
+
+    `rest_port` has no default. The REST instance addresses a different content database. A
+    default lets a command count the wrong corpus.
+    """
 
     host: str
     port: int = 8000
     manage_port: int = 8002
+    rest_port: int | None = None
     username: str
     password: SecretStr
     auth_method: str = "digest"
     timeout: int = 30
     default_group: str = "Default"
+    identities: dict[str, str] = {}
 
     def __repr__(self) -> str:
         return f"ProfileSettings(host={self.host!r}, port={self.port}, username={self.username!r})"
@@ -37,6 +44,13 @@ class AppConfig(BaseModel):
 
 def _default_config_path() -> Path:
     return Path.home() / ".config" / "marklogic-tool" / "config.toml"
+
+
+def config_path() -> Path:
+    """The path `config add` writes to: the override if set, else the default."""
+    if "MARKLOGIC_CONFIG" in os.environ:
+        return Path(os.environ["MARKLOGIC_CONFIG"])
+    return _default_config_path()
 
 
 def _find_config_file() -> Path | None:
@@ -83,6 +97,10 @@ def _apply_env_overlay(profile: ProfileSettings) -> ProfileSettings:
         overrides["host"] = os.environ["ML_HOST"]
     if "ML_PORT" in os.environ:
         overrides["port"] = int(os.environ["ML_PORT"])
+    if "ML_REST_PORT" in os.environ:
+        overrides["rest_port"] = int(os.environ["ML_REST_PORT"])
+    if "ML_MANAGE_PORT" in os.environ:
+        overrides["manage_port"] = int(os.environ["ML_MANAGE_PORT"])
     if "ML_USERNAME" in os.environ:
         overrides["username"] = os.environ["ML_USERNAME"]
     if "ML_PASSWORD" in os.environ:
@@ -136,4 +154,18 @@ def resolve_profile(
         )
 
     profile = app_config.profiles[name]
-    return _apply_env_overlay(profile)
+    return _apply_env_overlay(_resolve_password_reference(profile))
+
+
+def _resolve_password_reference(profile: ProfileSettings) -> ProfileSettings:
+    """Resolve a `password` that carries a secret reference.
+
+    The tool resolves it here, once. A literal password stays as it is, so existing config
+    files keep working.
+    """
+    raw = profile.password.get_secret_value()
+    if not raw.startswith(secrets.SCHEMES):
+        return profile
+    return profile.model_copy(
+        update={"password": secrets.resolve(raw, identities=profile.identities)}
+    )

@@ -1,0 +1,95 @@
+# A fuller declaration: an application identity that can read and write its own documents,
+# and a reader identity that can see what the writer produced.
+#
+# What this shows that minimal.yaml cannot:
+#   · `default_permissions` on a role — the reason this file exists (see below)
+#   · a role inheritance chain, and why declaration order does not matter
+#   · secret references for user passwords, in both supported forms
+#   · database index settings that some verification commands require
+#
+#   marklogic-tool deploy examples/application.yaml --dry-run
+#   marklogic-tool deploy examples/application.yaml
+#   marklogic-tool count-unpermissioned -d catalog-content   # expect 0, exit 0
+
+version: 1
+target:
+  hosts:
+    - ml.example.com
+rest_apis:
+  - name: catalog
+    port: 8040
+    database: catalog-content
+    modules_database: catalog-modules
+databases:
+  - name: catalog-content
+    # uri_lexicon is a PREREQUISITE for the exhaustive unpermissioned scan. Without it
+    # `count-unpermissioned` refuses by name rather than returning an under-reported
+    # count, because a quiet undercount of a permission problem is worse than an error.
+    uri_lexicon: true
+    collection_lexicon: true
+    # Only needed if you store RDF triples and want to query them. Off by default,
+    # because the index is not free.
+    triple_index: true
+    directory_creation: manual
+    schema_database: catalog-schemas
+  - name: catalog-schemas
+app_servers:
+  # Declared separately from the rest_api above so its authentication can be set. A new
+  # REST instance defaults to digest; if your clients authenticate with basic, a
+  # digest-only server refuses them and the failure appears at cutover rather than now.
+  - name: catalog
+    authentication: digest-basic
+roles:
+  # Order here is for readability only. The tool builds a dependency graph and creates
+  # roles in the order their inheritance requires, so a role may be listed before the one
+  # it inherits from.
+  - name: catalog-nobody
+    description: The unauthenticated baseline the other roles build on
+  - name: catalog-reader
+    description: Read documents through the REST endpoints
+    inherits: [rest-reader, catalog-nobody]
+  - name: catalog-writer
+    description: Read and write documents through the REST endpoints
+    inherits: [rest-writer, catalog-reader]
+    # THE POINT OF THIS FILE.
+    #
+    # Without default_permissions, a document written by this role can end up with an
+    # EMPTY permission set. MarkLogic then treats it as visible to no non-admin identity
+    # at all: a search as the writer returns zero results and NO error, so the corpus
+    # looks empty rather than broken, and an admin-authenticated check reports everything
+    # as healthy because admin sees all documents regardless of permissions.
+    #
+    # Setting it here moves the guarantee into the server. Every document this role writes
+    # acquires these permissions whether or not the ingest code remembered to ask. Relying
+    # on the application to pass permissions at ingest works right up until one code path
+    # forgets.
+    default_permissions:
+      - role: catalog-writer
+        capabilities: [read, update]
+      - role: catalog-reader
+        capabilities: [read]
+  - name: catalog-internal
+    description: Held by amped library modules; never assigned to a user
+    inherits: [catalog-writer]
+  - name: catalog-admin
+    description: Administers this application only, and is not a MarkLogic administrator
+    inherits: [rest-admin, catalog-writer]
+users:
+  # A password is NEVER written here. Each entry carries a reference that is resolved at
+  # the moment it is needed, so no secret reaches version control. A literal is refused by
+  # name rather than accepted. See the Credentials section of the README.
+  - name: catalog-writer
+    roles: [catalog-writer]
+    # Resolved from the environment. Simplest for local and CI use.
+    password: env:CATALOG_WRITER_PASSWORD # pragma: allowlist secret
+  - name: catalog-reader
+    roles: [catalog-reader]
+    # Resolved from AWS SSM Parameter Store, decrypted in place. The identity running the
+    # tool needs ssm:GetParameter AND kms:Decrypt — with the second one missing,
+    # GetParameter succeeds and only the decrypt fails, which reads like a wrong path.
+    password: ssm:/example-org/dev/marklogic/catalog/reader-password # pragma: allowlist secret
+  - name: catalog-admin
+    roles: [catalog-admin]
+    password: env:CATALOG_ADMIN_PASSWORD # pragma: allowlist secret
+    # Note what is absent: no user here holds MarkLogic `admin`. An application that needs
+    # admin to function has a permission model that has not been worked out yet.

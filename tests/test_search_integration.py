@@ -14,7 +14,7 @@ from marklogic_tool.core.exceptions import ConfigurationError
 
 runner = CliRunner()
 
-DATABASE = "taxtime-nextgen-content"
+DATABASE = "example-content"
 
 
 def _clean_output(text):

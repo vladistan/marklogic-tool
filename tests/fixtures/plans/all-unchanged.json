@@ -1,0 +1,45 @@
+{
+  "schema": "marklogic-tool/deploy-plan/1",
+  "mode": "apply",
+  "target": [
+    "ml-01.example.test"
+  ],
+  "ml_version": null,
+  "objects": [
+    {
+      "kind": "database",
+      "name": "content",
+      "status": "unchanged",
+      "applied": false,
+      "changes": [],
+      "suppressed_changes": [],
+      "blocked_reason": null,
+      "force_required": false,
+      "forced": false,
+      "depends_on_pending": [],
+      "notes": []
+    },
+    {
+      "kind": "database",
+      "name": "schemas",
+      "status": "unchanged",
+      "applied": false,
+      "changes": [],
+      "suppressed_changes": [],
+      "blocked_reason": null,
+      "force_required": false,
+      "forced": false,
+      "depends_on_pending": [],
+      "notes": []
+    }
+  ],
+  "summary": {
+    "create": 0,
+    "update": 0,
+    "unchanged": 2,
+    "blocked": 0,
+    "total": 2
+  },
+  "warnings": [],
+  "exit_code": null
+}

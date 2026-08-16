@@ -1,0 +1,25 @@
+# The smallest declaration that does something useful.
+#
+# One REST instance. Creating a rest-api in a single request also creates its content and
+# modules databases, with the rewriter and error handler that make the /v1/ endpoints work
+# — hand-building an app server instead omits those and the endpoints return 404.
+#
+# Run it against a scratch host first:
+#   marklogic-tool deploy examples/minimal.yaml --dry-run
+#   marklogic-tool deploy examples/minimal.yaml
+#
+# The second run should report every object `unchanged`. If it does not, the tool found
+# drift, and the report names the property rather than quietly reapplying it.
+
+version: 1
+target:
+  # deploy refuses to run against a host that is not listed here. Keep this narrow; it is
+  # the guard that stops a declaration written for staging from being applied to anything
+  # else.
+  hosts:
+    - ml.example.com
+rest_apis:
+  - name: catalog
+    port: 8040
+    database: catalog-content
+    modules_database: catalog-modules

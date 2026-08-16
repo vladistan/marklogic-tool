@@ -174,7 +174,7 @@ def test_doc_get_not_found(mock_client_cls, mock_resolve):
 
     result = runner.invoke(app, ["doc", "get", "/missing.xml"])
 
-    assert result.exit_code == 1
+    assert result.exit_code == 3
 
 
 @patch("marklogic_tool.commands.doc.resolve_profile")

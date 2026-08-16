@@ -127,6 +127,7 @@ def _mock_response(status_code, path="/v1/documents"):
     response = MagicMock(spec=httpx.Response)
     response.status_code = status_code
     response.is_success = 200 <= status_code < 300
+    response.text = ""
     response.request = MagicMock()
     response.request.url = httpx.URL(f"http://ml.example.com:8000{path}")
     return response
@@ -151,7 +152,7 @@ def test_http_404_raises_not_found_error(digest_profile):
         client._client.request = MagicMock(
             return_value=_mock_response(404, "/v1/documents?uri=/missing.xml")
         )
-        with pytest.raises(NotFoundError, match="Resource not found"):
+        with pytest.raises(NotFoundError, match="no such resource"):
             client.get("/v1/documents", params={"uri": "/missing.xml"})
 
 

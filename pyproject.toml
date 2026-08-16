@@ -4,14 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "marklogic-tool"
-version = "0.0.1"
-description = "Read-only CLI for querying MarkLogic Server via REST API"
+version = "0.0.3"
+description = "CLI to query, verify, deploy and destroy MarkLogic Server configuration via the REST and Management APIs"
 readme = "README.md"
-license = "MIT"
 authors = [
   {name = "Vlad Korolev", email = "vlad@v-lad.org"}
 ]
-requires-python = ">=3.13"
+license = "MIT"
 keywords = [
   "marklogic",
   "rest-api",
@@ -28,13 +27,15 @@ classifiers = [
   "Topic :: Database",
   "Environment :: Console"
 ]
+requires-python = ">=3.13"
 dependencies = [
   "typer>=0.12",
   "httpx",
   "pydantic>=2.0",
   "rich>=13.0",
   "structlog>=24.0",
-  "sentry-sdk>=2.0"
+  "sentry-sdk>=2.0",
+  "pyyaml>=6.0"
 ]
 
 [project.optional-dependencies]
@@ -42,16 +43,17 @@ dev = [
   "pytest>=8.0",
   "pytest-cov>=4.0",
   "ruff>=0.8",
-  "mypy>=1.13"
+  "mypy>=1.13",
+  "types-PyYAML"
 ]
+
+[project.scripts]
+marklogic-tool = "marklogic_tool.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/vladistan/marklogic-tool"
 Repository = "https://github.com/vladistan/marklogic-tool"
 Issues = "https://github.com/vladistan/marklogic-tool/issues"
-
-[project.scripts]
-marklogic-tool = "marklogic_tool.cli:main"
 
 [tool.coverage.report]
 exclude_lines = [
@@ -73,6 +75,40 @@ omit = [
   "*/tests/*",
   "*/test_*.py",
   "*/__about__.py"
+]
+
+[tool.hatch.build.targets.sdist]
+# A published sdist must carry no internal material. This is the guard that was
+# missing when web-search-tool 0.1.1 shipped plans/ and PUB_MANIFEST.md and had to
+# be deleted from PyPI.
+#
+# tests/live and its guard test are excluded rather than scrubbed: FORBIDDEN_HOSTS
+# names production so live tests cannot select it, and that literal must stay
+# literal. Excluding the files keeps the guard fully armed in-repo while shipping
+# none of it. test_live_tier_guard.py goes with it because it imports
+# tests.live.conftest and asserts its contents — shipping it without tests/live
+# would ship an ImportError.
+#
+# test_charter.py and test_acceptance_brief_tally.py are excluded for the same reason one
+# step further out: they assert REPOSITORY invariants, reading PUB_MANIFEST.md and
+# plans/briefs/ACCEPTANCE-6.5.md. Both must never ship, so these two can never pass in a
+# published package - they would fail on a user's machine for a reason that is none of
+# their business. They stay in the repo because they are load-bearing there: one keeps the
+# charter identical across all six sites, the other keeps the acceptance brief from
+# disagreeing with its own checkboxes.
+#
+# coverage.xml is excluded because it SHIPPED. It is git-ignored, but hatchling does not
+# consult .gitignore for the sdist, so a locally generated coverage report was packaged and
+# carried absolute /home/<user>/ paths into the artifact. Found by building the sdist and
+# scanning its contents rather than by reasoning about what ought to be in it.
+exclude = [
+  "/plans",
+  "/PUB_MANIFEST.md",
+  "/tests/live",
+  "/tests/test_live_tier_guard.py",
+  "/tests/test_charter.py",
+  "/tests/test_acceptance_brief_tally.py",
+  "/coverage.xml"
 ]
 
 [tool.mypy]
@@ -106,7 +142,8 @@ addopts = [
 markers = [
   "slow: marks tests as slow (deselect with '-m \"not slow\"')",
   "integration: marks tests as integration tests",
-  "unit: marks tests as unit tests"
+  "unit: marks tests as unit tests",
+  "live: talks to a real MarkLogic server; guarded by tests/live/conftest.py, which ABORTS the run on a forbidden or unnamed host"
 ]
 
 [tool.ruff]

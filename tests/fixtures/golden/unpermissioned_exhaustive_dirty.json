@@ -1,0 +1,21 @@
+{
+  "database": "seeded-db",
+  "elapsed_seconds": "<elapsed>",
+  "endpoint": "http://ml.example.com:8000",
+  "evidence": true,
+  "exit_code": 7,
+  "findings_are_sound": true,
+  "gate": true,
+  "identity": "admin",
+  "identity_source": "profile",
+  "method": "exhaustive",
+  "schema": "marklogic-tool/unpermissioned/1",
+  "total_scanned": 100,
+  "unpermissioned": 9,
+  "uris": [
+    "/a.xml",
+    "/b.xml"
+  ],
+  "uris_listing": "truncated",
+  "uris_requested": 2
+}

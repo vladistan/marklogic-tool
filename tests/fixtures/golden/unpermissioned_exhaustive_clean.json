@@ -1,0 +1,18 @@
+{
+  "database": "clean-db",
+  "elapsed_seconds": "<elapsed>",
+  "endpoint": "http://ml.example.com:8000",
+  "evidence": true,
+  "exit_code": 0,
+  "findings_are_sound": true,
+  "gate": true,
+  "identity": "admin",
+  "identity_source": "profile",
+  "method": "exhaustive",
+  "schema": "marklogic-tool/unpermissioned/1",
+  "total_scanned": 191310,
+  "unpermissioned": 0,
+  "uris": [],
+  "uris_listing": "not_requested",
+  "uris_requested": 0
+}

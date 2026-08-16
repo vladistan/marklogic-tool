@@ -2,6 +2,7 @@
 
 from typer.testing import CliRunner
 
+from marklogic_tool.__about__ import __version__
 from marklogic_tool.cli import app
 
 runner = CliRunner()
@@ -14,10 +15,16 @@ def test_help():
 
 
 def test_version():
+    """Read the version rather than pin it.
+
+    A literal fails on every release. The repo says one version. The shipped package says
+    another. The suite a user runs then breaks for a reason that is not theirs.
+    """
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert "marklogic-tool" in result.stdout
-    assert "0.0.1" in result.stdout
+    # Guard the tautology: an empty __version__ would make the check below vacuous.
+    assert __version__, "__about__.__version__ is empty"
+    assert f"marklogic-tool {__version__}" in result.stdout
 
 
 def test_no_args_shows_help():

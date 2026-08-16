@@ -1,5 +1,7 @@
 """Database commands — list and show database info via manage API."""
 
+# cspell:ignore COLLXCNNOTFOUND
+
 from typing import Any
 
 import typer
@@ -117,13 +119,24 @@ def db_show(
     try:
         status = _fetch_database_status(resolved, name)
         doc_count = _fetch_single_db_doc_count(resolved, name)
-        collections = _fetch_collections(resolved, name)
+        # A disabled lexicon costs the collections only; the rest of the report
+        # is still true and still worth printing.
+        collections = (
+            _fetch_collections(resolved, name)
+            if collection_lexicon_enabled(resolved, name)
+            else None
+        )
     except MarkLogicToolError as e:
         typer.echo(f"Error: {e.message}", err=True)
         raise typer.Exit(code=e.exit_code) from None
 
     status["documents"] = doc_count
+    # None, never []. An empty list reads as "this database has no collections";
+    # the truth is that we cannot see them. Reporting a distinction we cannot
+    # observe is the defect this tool exists to eliminate.
     status["collections"] = collections
+    if collections is None:
+        status["collections_unavailable_reason"] = COLLECTION_LEXICON_DISABLED
 
     if output_fmt == "json":
         print(format_json([status]))
@@ -221,6 +234,20 @@ def _fetch_single_db_doc_count(profile: "ProfileSettings", name: str) -> int:  #
     return 0
 
 
+COLLECTION_LEXICON_DISABLED = "collection lexicon disabled on this database"
+
+
+def collection_lexicon_enabled(profile: "ProfileSettings", name: str) -> bool:  # type: ignore[name-defined]  # noqa: F821
+    """Say whether `cts:collections()` can answer for this database.
+
+    The failing axis is the collection lexicon, not the MarkLogic version. Absence of the
+    property means disabled.
+    """
+    with ManageClient(profile) as client:
+        props = client.get_json(f"/manage/v2/databases/{name}/properties")
+    return props.get("collection-lexicon") is True
+
+
 def _fetch_collections(profile: "ProfileSettings", name: str) -> list[dict[str, Any]]:  # type: ignore[name-defined]  # noqa: F821
     query = (
         "for $c in cts:collections() "
@@ -263,10 +290,18 @@ def _print_db_detail(status: dict[str, Any]) -> None:
     typer.echo(f"  Capacity:     {status['min_capacity_pct']:.1f}%")
     typer.echo(f"  Merges:       {status['merge_count']}")
 
-    collections = status.get("collections", [])
-    if collections:
+    collections = status.get("collections")
+    if collections is None:
+        reason = status.get(
+            "collections_unavailable_reason", COLLECTION_LEXICON_DISABLED
+        )
+        # Not "0 collections" — that would assert something we did not observe.
+        typer.echo(f"  Collections:  unavailable — {reason}")
+    elif collections:
         typer.echo(f"  Collections:  {len(collections)}")
         for coll in collections[:10]:
             typer.echo(f"    {coll['name']} ({coll['documents']:,} docs)")
         if len(collections) > 10:
             typer.echo(f"    ... and {len(collections) - 10} more")
+    else:
+        typer.echo("  Collections:  0")

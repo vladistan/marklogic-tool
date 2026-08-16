@@ -14,7 +14,7 @@ from marklogic_tool.core.exceptions import ConfigurationError
 
 runner = CliRunner()
 
-DATABASE = "taxtime-nextgen-content"
+DATABASE = "example-content"
 KNOWN_XML_URI = "/doc/email/2021/176be87d1cdf7f00.xml"
 KNOWN_JSON_URI = "/musicians/musician1.json"
 

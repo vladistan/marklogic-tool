@@ -6,6 +6,8 @@
 # ML_PROFILE        — profile name (overrides default_profile)
 # ML_HOST           — override host
 # ML_PORT           — override port
+# ML_REST_PORT      — override rest_port
+# ML_MANAGE_PORT    — override manage_port
 # ML_USERNAME       — override username
 # ML_PASSWORD       — override password
 
@@ -15,11 +17,17 @@ default_profile = "local"
 host = "localhost"
 port = 8000
 manage_port = 8002
+rest_port = 8030 # the application's REST instance; no default — REST-backed commands refuse when unset rather than borrowing `port`, since the two address different content databases
 username = "admin"
 password = "admin" # pragma: allowlist secret
 auth_method = "digest"
 timeout = 30
 default_group = "Default"
+
+# Identities map a username to a SecretRef — env:VAR, ssm:/path or profile:NAME.
+# Secrets are resolved by indirection; a literal here is refused.
+[profiles.local.identities]
+app-writer = "env:ML_APP_WRITER_SECRET"
 
 # [profiles.staging]
 # host = "ml-staging.example.com"

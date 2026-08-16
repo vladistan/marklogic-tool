@@ -8,6 +8,7 @@ import typer
 from marklogic_tool.core.client import MarkLogicClient
 from marklogic_tool.core.config import resolve_profile
 from marklogic_tool.core.exceptions import MarkLogicToolError
+from marklogic_tool.core.http import require_total
 from marklogic_tool.output.formatters import format_json, format_table
 
 search_app = typer.Typer(help="Search documents.")
@@ -34,18 +35,7 @@ def search_command(
     ),
     start: int = typer.Option(1, "--start", help="Start position (1-based)."),
 ) -> None:
-    """Search documents in MarkLogic via /v1/search.
-
-    Examples:
-
-        marklogic-tool search "armstrong"
-
-        marklogic-tool search -c /emails -c /contacts "test"
-
-        marklogic-tool search --structured '{"query":{"word-query":{"text":"test"}}}'
-
-        marklogic-tool search -d Documents -n 25 "invoice"
-    """
+    """Search documents through `/v1/search`."""
     parent_obj = ctx.ensure_object(dict)
     profile_name: str | None = parent_obj.get("profile")
     output_fmt: str = parent_obj.get("output", "table")
@@ -115,7 +105,7 @@ def _render_search_results(text: str, fmt: str, start: int, page_length: int) ->
         print(format_json([data]) if isinstance(data, dict) else text)
         return
 
-    total = data.get("total", 0)
+    total = require_total(data, "search results")
     results = data.get("results", [])
 
     if not results:

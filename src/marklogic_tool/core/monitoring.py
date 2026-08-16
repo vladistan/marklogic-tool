@@ -1,39 +1,64 @@
-"""Sentry integration for error tracking and performance monitoring.
+"""Sentry integration, with a compiled-in DSN.
 
-Sentry is initialized early in main() after logging setup.
-Telemetry is enabled by default; it can be disabled via the
-MARKLOGIC_TOOL_DISABLE_TELEMETRY environment variable.
+Local variables are switched off, because the frames that fail here are transport frames
+holding credentials. Every outbound string passes through the same `redact()` that backs
+logging.
 """
 
 import os
+from typing import Any
 
 import sentry_sdk
 
 from marklogic_tool.__about__ import __version__
+from marklogic_tool.core.secrets import redact
+
+
+def scrub_event(event: Any, _hint: Any = None) -> Any:
+    """Strip every known secret from an outbound Sentry event."""
+    return _scrub(event)
+
+
+def _scrub(value: Any) -> Any:
+    if isinstance(value, str):
+        return redact(value)
+    if isinstance(value, dict):
+        return {key: _scrub(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_scrub(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_scrub(item) for item in value)
+    return value
+
+
+DISABLE_TELEMETRY_ENV = "MARKLOGIC_TOOL_DISABLE_TELEMETRY"
+
+TRUTHY = ("1", "true", "yes")
+"""The values the published 0.0.1 honoured. Kept identical so an operator who set it
+before, and had it work, is not silently unsupported now."""
+
+
+def telemetry_disabled() -> bool:
+    """Whether the operator has opted out."""
+    return os.getenv(DISABLE_TELEMETRY_ENV, "").lower() in TRUTHY
 
 
 def setup_sentry(*, environment: str = "local") -> None:
-    """Initialize Sentry unless telemetry has been disabled via environment variable.
+    """Initialize Sentry, unless the environment disables telemetry.
 
-    Args:
-        environment: Sentry environment tag (local, staging, production)
-
-    Environment Variables:
-        MARKLOGIC_TOOL_DISABLE_TELEMETRY: Set to a truthy value ("1", "true",
-            "True") to disable telemetry. Default: telemetry enabled.
+    The opt-out returns before `sentry_sdk.init`, so the SDK is never configured. An init
+    followed by a disable leaves a client installed.
     """
-    disable_val = os.getenv("MARKLOGIC_TOOL_DISABLE_TELEMETRY", "")
-    telemetry_disabled = disable_val.lower() in ("1", "true", "yes")
-
-    if telemetry_disabled:
-        # Telemetry disabled via environment variable
+    if telemetry_disabled():
         return
 
     sentry_sdk.init(
-        dsn="https://23eb0bce446cdbfb7b0833bb7a863f1f@o4508594232426496.ingest.us.sentry.io/4511746984968192",
+        dsn="https://82f551468e748cbbdc6aacbd188162c5@sentry.r4.v-lad.org/18",
         traces_sample_rate=0.03,
         environment=environment,
         release=__version__,
         attach_stacktrace=True,
         send_default_pii=False,
+        include_local_variables=False,
+        before_send=scrub_event,
     )

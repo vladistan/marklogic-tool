@@ -1,0 +1,64 @@
+{
+  "schema": "marklogic-tool/deploy-plan/1",
+  "mode": "plan",
+  "target": [
+    "ml-01.example.test"
+  ],
+  "ml_version": null,
+  "objects": [
+    {
+      "kind": "role",
+      "name": "writer",
+      "status": "blocked",
+      "applied": false,
+      "changes": [
+        {
+          "property": "permission",
+          "observed": [
+            "read",
+            "update"
+          ],
+          "desired": [
+            "read"
+          ],
+          "redacted": false
+        }
+      ],
+      "suppressed_changes": [],
+      "blocked_reason": "capability set on declared role 'writer' shrinks from [read, update] to [read]; subtractive security drift",
+      "force_required": true,
+      "forced": false,
+      "depends_on_pending": [],
+      "notes": []
+    },
+    {
+      "kind": "user",
+      "name": "svc",
+      "status": "update",
+      "applied": false,
+      "changes": [
+        {
+          "property": "password",
+          "observed": null,
+          "desired": "ssm:/ml/svc",
+          "redacted": true
+        }
+      ],
+      "suppressed_changes": [],
+      "blocked_reason": null,
+      "force_required": false,
+      "forced": false,
+      "depends_on_pending": [],
+      "notes": []
+    }
+  ],
+  "summary": {
+    "create": 0,
+    "update": 1,
+    "unchanged": 0,
+    "blocked": 1,
+    "total": 2
+  },
+  "warnings": [],
+  "exit_code": null
+}

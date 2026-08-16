@@ -112,6 +112,7 @@ def test_manage_client_401_raises_auth_error(mock_client_cls, profile):
     mock_http = MagicMock()
     mock_response = MagicMock()
     mock_response.is_success = False
+    mock_response.text = ""
     mock_response.status_code = 401
     mock_http.get.return_value = mock_response
     mock_client_cls.return_value = mock_http

@@ -30,23 +30,12 @@ def eval_command(
         None, "--vars", help="External variables as JSON object."
     ),
 ) -> None:
-    """Execute XQuery or JavaScript code against MarkLogic /v1/eval.
-
-    Examples:
-
-        marklogic-tool eval 'xdmp:database-name(xdmp:database())'
-
-        marklogic-tool eval --javascript 'cts.collections()'
-
-        marklogic-tool eval --file query.xqy -d Documents
-
-        marklogic-tool eval --vars '{"db":"mydb"}' 'declare variable $db external; $db'
-    """
+    """Run XQuery or JavaScript against `/v1/eval`."""
     parent_obj = ctx.ensure_object(dict)
     profile_name: str | None = parent_obj.get("profile")
     output_fmt: str = parent_obj.get("output", "table")
 
-    source = _resolve_source(code, file)
+    source, origin = _resolve_source(code, file)
 
     if variables:
         try:
@@ -76,29 +65,73 @@ def eval_command(
             response = client.post("/v1/eval", data=data)
             results = _parse_eval_response(response)
     except MarkLogicToolError as e:
-        typer.echo(f"Error: {e.message}", err=True)
+        typer.echo(
+            f"Error: {e.message}{_interpretation_note(source, origin)}", err=True
+        )
         raise typer.Exit(code=e.exit_code) from None
 
     _render_results(results, output_fmt)
 
 
-def _resolve_source(code: str | None, file: Path | None) -> str:
+INLINE = "inline"
+FILE = "file"
+STDIN = "stdin"
+
+
+def _resolve_source(code: str | None, file: Path | None) -> tuple[str, str]:
+    """Resolve the query. Return the interpretation that produced it.
+
+    A positional argument is always code. The tool reads a file only when `--file` says so.
+    It never inspects the argument to guess.
+    """
     if file is not None:
         if not file.exists():
-            typer.echo(f"Error: File not found: {file}", err=True)
+            typer.echo(
+                f"Error: no file at {file}. This was the FILE interpretation, "
+                "selected by --file. To run this text as a query instead, pass "
+                "it as the positional argument without --file.",
+                err=True,
+            )
             raise typer.Exit(code=3)
-        return file.read_text()
+        return file.read_text(), FILE
 
     if code is not None:
-        return code
+        return code, INLINE
 
     if not sys.stdin.isatty():
         source = sys.stdin.read()
         if source.strip():
-            return source
+            return source, STDIN
 
     typer.echo("Error: No code provided. Pass code, --file, or pipe stdin.", err=True)
     raise typer.Exit(code=2)
+
+
+def _interpretation_note(source: str, origin: str) -> str:
+    """Name the interpretation the tool used, for an error that needs it.
+
+    A test for a file of that name is a fact, not a guess. It changes what the tool says,
+    never what it does.
+    """
+    if origin != INLINE:
+        return ""
+
+    note = (
+        " The argument was sent as inline code, because a positional argument "
+        "is always code."
+    )
+    candidate = source.strip()
+    if candidate and "\n" not in candidate and len(candidate) < 4096:
+        try:
+            exists = Path(candidate).is_file()
+        except (OSError, ValueError):
+            exists = False
+        if exists:
+            note += (
+                f" A file named '{candidate}' does exist — to run its contents, "
+                f"pass --file {candidate}."
+            )
+    return note
 
 
 def _parse_eval_response(response: "httpx.Response") -> list[EvalResult]:  # type: ignore[name-defined]  # noqa: F821
