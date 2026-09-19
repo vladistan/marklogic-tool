@@ -31,7 +31,8 @@ class DuplicateKeyError(DeclarationError):
     """A mapping declared the same key twice.
 
     This is the feature's own failure mode: YAML's last-key-wins silently
-    discards a whole `roles:` block, so it is refused rather than resolved.
+    discards a whole `roles:` block, so the tool refuses it rather than
+    resolving it.
     """
 
 
@@ -44,7 +45,7 @@ class DeniedPropertyError(DeclarationError):
 
 
 class SecretReferenceError(DeclarationError):
-    """A password was given as a literal, or as an unusable reference."""
+    """A declaration passed a password as a literal, or as an unusable reference."""
 
 
 class UnmappedPropertyError(DeclarationError):

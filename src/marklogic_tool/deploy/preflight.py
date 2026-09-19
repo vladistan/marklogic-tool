@@ -42,7 +42,7 @@ class ProbeClient(Protocol):
 
 @dataclass
 class PreflightResult:
-    """What pre-flight learned, handed on so nothing is probed twice."""
+    """What pre-flight learned, handed on so nothing needs a second probe."""
 
     declaration: Declaration
     order: list[Node]
@@ -214,8 +214,8 @@ def preflight(
 ) -> PreflightResult:
     """Run every honestly verifiable check, cheapest-first, issuing no writes.
 
-    Raises on the first failure. The offline checks (1-3) complete before the client
-    is touched at all, so a bad declaration never reaches the network.
+    Raises on the first failure. The offline checks (1-3) complete before anything
+    touches the client, so a bad declaration never reaches the network.
     """
     # 1. Schema validity — no request issued.
     declaration = load_declaration(raw, source=source)

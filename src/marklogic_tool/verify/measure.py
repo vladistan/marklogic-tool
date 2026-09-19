@@ -47,7 +47,7 @@ class VerifyClients:
 
 @dataclass(frozen=True, slots=True)
 class Measurement:
-    """What was observed, and how much of the corpus it covered."""
+    """What the probe found, and how much of the corpus it covered."""
 
     database: str
     method: str

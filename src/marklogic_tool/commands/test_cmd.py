@@ -16,8 +16,9 @@ test_app = typer.Typer(help="Diagnostic test commands.", no_args_is_help=True)
 def test_sentry() -> None:
     """Send a test error and span to Sentry, and report the captured event id.
 
-    Exits non-zero when nothing was captured. The usual cause is an unset or
-    unreachable DSN. That failure is the whole reason the command exists.
+    Exits non-zero when Sentry captures nothing. The usual cause is an
+    unset or unreachable DSN. That failure is the whole reason the
+    command exists.
     """
     import sentry_sdk
 

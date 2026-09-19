@@ -8,8 +8,9 @@ import typer
 
 from marklogic_tool.core.client import MarkLogicClient
 from marklogic_tool.core.config import resolve_profile
-from marklogic_tool.core.exceptions import MarkLogicToolError, ParseError
+from marklogic_tool.core.exceptions import BlockedError, MarkLogicToolError, ParseError
 from marklogic_tool.core.response import EvalResult, parse_multipart_mixed
+from marklogic_tool.core.safety import dangerous_eval_reason
 from marklogic_tool.output.formatters import format_json
 
 eval_app = typer.Typer(help="Execute code on MarkLogic Server.")
@@ -29,8 +30,19 @@ def eval_command(
     variables: str | None = typer.Option(
         None, "--vars", help="External variables as JSON object."
     ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Run code that looks like an unconstrained delete despite the safety guard.",
+    ),
 ) -> None:
-    """Run XQuery or JavaScript against `/v1/eval`."""
+    """Run XQuery or JavaScript against `/v1/eval`.
+
+    Refuses an unconstrained delete unless you pass --force.
+
+    Examples:
+        marklogic-tool eval "xdmp:database-name(xdmp:database())"
+    """
     parent_obj = ctx.ensure_object(dict)
     profile_name: str | None = parent_obj.get("profile")
     output_fmt: str = parent_obj.get("output", "table")
@@ -43,6 +55,12 @@ def eval_command(
         except json.JSONDecodeError as e:
             typer.echo(f"Error: Invalid JSON in --vars: {e}", err=True)
             raise typer.Exit(code=2) from None
+
+    danger = dangerous_eval_reason(source)
+    if danger and not force:
+        error = BlockedError(f"{danger}. Re-run with --force to execute it anyway.")
+        typer.echo(f"Error: {error.message}", err=True)
+        raise typer.Exit(code=error.exit_code) from None
 
     try:
         profile = resolve_profile(profile_name=profile_name)

@@ -126,7 +126,7 @@ def _record_exit_code(plan: DeployPlan | None, code: int) -> None:
     """Stamp the outcome on the plan before the tool emits it.
 
     `exit_code: null` next to a non-zero exit states the wrong outcome. A failure can happen
-    before the plan exists, so this is guarded.
+    before the plan exists, so this function guards that case.
     """
     if plan is not None:
         plan.exit_code = code

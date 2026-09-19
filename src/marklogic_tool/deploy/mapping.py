@@ -422,8 +422,8 @@ def to_manage(kind: str, declared: dict[str, object]) -> dict[str, object]:
 def to_user(kind: str, observed: dict[str, object]) -> dict[str, object]:
     """Translate an observed Manage payload back into user-vocabulary terms.
 
-    Declared-subset semantics live in the caller, not here: this translates whatever it
-    is given and refuses anything it cannot name.
+    Declared-subset semantics live in the caller, not here: this translates whatever
+    the caller passes and refuses anything it cannot name.
     """
     result: dict[str, object] = {}
     for manage_name, value in observed.items():

@@ -133,7 +133,7 @@ def count_command(
 def endpoint_for(profile: ProfileSettings, *, as_user: str | None) -> Endpoint:
     """Pick the endpoint.
 
-    Use REST whenever it is configured, so both halves of the pairing use one app server.
+    Use REST whenever the profile configures it, so both halves of the pairing use one app server.
     `--as-user` requires REST, so an unset `rest_port` becomes a named refusal.
     """
     if as_user is not None or profile.rest_port is not None:

@@ -1,6 +1,6 @@
 """Exception hierarchy, with the exit code mapping.
 
-Exit 1 is reserved for undocumented outcomes. Codes 7 and 8 are contract: 7 means the
+Exit 1 covers only undocumented outcomes. Codes 7 and 8 are contract: 7 means the
 verification found offending documents, and 8 means the run refused to act.
 """
 
@@ -38,7 +38,7 @@ class RefusalError(MarkLogicToolError):
 
 
 class InvocationError(RefusalError):
-    """The command was invoked wrongly."""
+    """The caller invoked the command wrongly."""
 
     exit_code = ExitCode.USAGE
 
@@ -104,6 +104,6 @@ class VerificationFailedError(MarkLogicToolError):
 
 
 class BlockedError(MarkLogicToolError):
-    """An object could not be acted on safely and was left alone."""
+    """The tool refused to act on an object it could not handle safely."""
 
     exit_code = ExitCode.BLOCKED

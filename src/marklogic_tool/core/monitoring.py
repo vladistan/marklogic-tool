@@ -1,8 +1,8 @@
 """Sentry integration, with a compiled-in DSN.
 
-Local variables are switched off, because the frames that fail here are transport frames
-holding credentials. Every outbound string passes through the same `redact()` that backs
-logging.
+This module switches off local variables, because the frames that fail here are transport
+frames holding credentials. Every outbound string passes through the same `redact()` that
+backs logging.
 """
 
 import os

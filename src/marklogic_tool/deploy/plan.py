@@ -35,8 +35,8 @@ class PlanStatus(StrEnum):
 class PropertyChange(BaseModel):
     """One property-level change, audited in Manage-native terms.
 
-    `property` is the single place a Manage-native name is allowed to surface to the
-    operator; everything else in the tool speaks the user vocabulary.
+    `property` is the single place where a Manage-native name may surface to
+    the operator; everything else in the tool speaks the user vocabulary.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -137,7 +137,7 @@ class DeployPlan(BaseModel):
 
     @classmethod
     def new(cls, *, mode: Literal["plan", "apply"], target: list[str]) -> "DeployPlan":
-        """Construct an empty plan before `reconcile` is entered."""
+        """Construct an empty plan before the caller enters `reconcile`."""
         return cls(mode=mode, target=list(target))
 
     def add_object(self, obj: ObjectPlan) -> ObjectPlan:

@@ -227,3 +227,50 @@ def test_eval_file_not_found():
     result = runner.invoke(app, ["eval", "-f", "/nonexistent/query.xqy"])
 
     assert result.exit_code == 3
+
+
+def test_eval_refuses_unconstrained_collection_delete():
+    result = runner.invoke(app, ["eval", "xdmp:collection-delete('foo')"])
+
+    assert result.exit_code == 8
+    assert "collection-delete" in result.output
+
+
+def test_eval_refuses_embedded_unconstrained_sparql_update():
+    result = runner.invoke(
+        app, ["eval", "sem:sparql-update('DELETE WHERE { ?s ?p ?o }')"]
+    )
+
+    assert result.exit_code == 8
+
+
+@patch("marklogic_tool.commands.eval.resolve_profile")
+@patch("marklogic_tool.commands.eval.MarkLogicClient")
+def test_eval_force_overrides_refusal(mock_client_cls, mock_resolve):
+    mock_client = MagicMock()
+    mock_client.__enter__ = MagicMock(return_value=mock_client)
+    mock_client.__exit__ = MagicMock(return_value=False)
+    mock_client.post.return_value = _mock_response()
+    mock_client_cls.return_value = mock_client
+
+    result = runner.invoke(
+        app, ["eval", "--force", "xdmp:collection-delete('foo')"]
+    )
+
+    assert result.exit_code == 0
+    mock_client.post.assert_called_once()
+
+
+@patch("marklogic_tool.commands.eval.resolve_profile")
+@patch("marklogic_tool.commands.eval.MarkLogicClient")
+def test_eval_ordinary_query_is_unaffected(mock_client_cls, mock_resolve):
+    mock_client = MagicMock()
+    mock_client.__enter__ = MagicMock(return_value=mock_client)
+    mock_client.__exit__ = MagicMock(return_value=False)
+    mock_client.post.return_value = _mock_response()
+    mock_client_cls.return_value = mock_client
+
+    result = runner.invoke(app, ["eval", "xdmp:database-name(xdmp:database())"])
+
+    assert result.exit_code == 0
+    mock_client.post.assert_called_once()

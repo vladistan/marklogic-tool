@@ -45,7 +45,7 @@ def build_report(
 
 
 def normalise_for_golden(report: dict[str, Any]) -> dict[str, Any]:
-    """Replace the one field that cannot be reproduced byte-for-byte."""
+    """Replace the one field that a byte-for-byte comparison cannot reproduce."""
     return {**report, "elapsed_seconds": ELAPSED_PLACEHOLDER}
 
 

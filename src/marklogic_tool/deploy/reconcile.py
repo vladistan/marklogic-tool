@@ -401,8 +401,9 @@ def _set_permissions_after_create(
 ) -> None:
     """Set `default_permissions` on a just-created object, as a separate PUT.
 
-    Silent when nothing was declared, so an object without permissions costs no extra
-    request. A kind with no properties endpoint cannot carry them at all.
+    Stays silent when the declaration carries nothing, so an object without
+    permissions costs no extra request. A kind with no properties endpoint
+    cannot carry them at all.
     """
     declared = properties.get("default_permissions")
     if not declared or not mapping.supports_properties:

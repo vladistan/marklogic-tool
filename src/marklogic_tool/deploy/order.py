@@ -74,7 +74,7 @@ def _satisfiable_database_names(declaration: Declaration) -> set[str]:
 def build_dependency_graph(declaration: Declaration) -> dict[Node, set[Node]]:
     """Map each declared object to the objects that must exist before it.
 
-    Raises `DanglingReferenceError` naming the reference that cannot be satisfied.
+    Raises `DanglingReferenceError` naming the reference nothing can satisfy.
     """
     nodes: set[Node] = set()
     for api in declaration.rest_apis:

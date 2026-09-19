@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "marklogic-tool"
-version = "0.0.3"
+version = "0.0.4"
 description = "CLI to query, verify, deploy and destroy MarkLogic Server configuration via the REST and Management APIs"
 readme = "README.md"
 authors = [

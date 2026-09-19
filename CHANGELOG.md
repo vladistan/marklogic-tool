@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.0.4 — 2026-09-19
+
+### Fixed
+
+- **`eval` refuses an unconstrained root-scoped delete unless you pass `--force`.**
+  Previously any XQuery/JavaScript sent to `eval` ran unchecked, including a delete with
+  no constraining scope. It now detects that shape and exits **8** (blocked) with the
+  reason, unless `--force` is given.
+
 ## 0.0.3 — 2026-08-16
 
 ### Documentation
